@@ -55,9 +55,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err: any) {
       console.warn('Google Sign-In fallback:', err);
       if (err?.code === 'auth/invalid-api-key' || err?.code === 'auth/api-key-not-valid' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'mock_firebase_api_key') {
-        setAuthError('Placeholder Firebase API Key detected. Please add your real Firebase API Key in .env.local.');
+        setAuthError('Placeholder Firebase API Key detected. Please add your real Firebase API Key in Netlify environment variables.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'your-domain';
+        setAuthError(`Unauthorized Domain: ${currentDomain} is not authorized for Firebase Sign-In. Add "${currentDomain}" in Firebase Console > Authentication > Settings > Authorized domains.`);
       } else if (err?.code === 'auth/operation-not-allowed') {
-        setAuthError('Google Sign-In provider is not enabled in Firebase Console for project promptwars-e8b41.');
+        setAuthError('Google Sign-In provider is not enabled in Firebase Console for project promptwars-e8b41. Enable Google provider under Authentication > Sign-in method.');
       } else {
         setAuthError(err?.message || 'Failed to sign in with Google');
       }
@@ -93,28 +96,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400">
-              <span className="font-bold text-lg">Firebase Setup Required for promptwars-e8b41</span>
+              <span className="font-bold text-lg">Firebase Auth Configuration Required</span>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
               {authError}
             </p>
 
-            <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-2 font-mono">
-              <p className="font-bold text-slate-900 dark:text-white">Quick 3-step setup in .env.local:</p>
-              <ol className="list-decimal pl-4 space-y-1 text-slate-600 dark:text-slate-400">
-                <li>Go to Firebase Console &gt; Project Settings</li>
-                <li>Copy your Web App firebaseConfig keys</li>
-                <li>Paste in <code>.env.local</code> and restart server</li>
+            <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-2 font-mono">
+              <p className="font-bold text-slate-900 dark:text-white">To fix auth/unauthorized-domain on Netlify:</p>
+              <ol className="list-decimal pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
+                <li>Go to <strong className="text-blue-600 dark:text-blue-400">Firebase Console &gt; Authentication &gt; Settings</strong></li>
+                <li>Click on the <strong className="text-slate-900 dark:text-white">Authorized domains</strong> tab</li>
+                <li>Click <strong className="text-slate-900 dark:text-white">Add domain</strong></li>
+                <li>Enter <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400 font-bold">whimsical-kringle-f5343d.netlify.app</code> and click Save</li>
               </ol>
             </div>
 
-            <button
-              onClick={() => setAuthError(null)}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Got It / Continue as Guest Demo Mode
-            </button>
+            <div className="flex space-x-3 pt-1">
+              <button
+                onClick={() => setAuthError(null)}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-md"
+              >
+                Got It / Continue as Guest Demo Mode
+              </button>
+            </div>
           </div>
         </div>
       )}
