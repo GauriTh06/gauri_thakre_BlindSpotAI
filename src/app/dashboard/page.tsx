@@ -1,20 +1,47 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { DecisionForm } from '@/components/decision/DecisionForm';
 import { ReadinessGauge } from '@/components/analysis/ReadinessGauge';
 import { BlindSpotGrid } from '@/components/analysis/BlindSpotGrid';
-import { AiCouncilView } from '@/components/analysis/AiCouncilView';
-import { BiasDetector } from '@/components/analysis/BiasDetector';
-import { MissingEvidenceEngine } from '@/components/analysis/MissingEvidenceEngine';
-import { ReflectionCoachChat } from '@/components/coach/ReflectionCoachChat';
-import { DecisionCanvas } from '@/components/canvas/DecisionCanvas';
-import { StakeholderImpactMap } from '@/components/stakeholder/StakeholderImpactMap';
-import { DashboardAnalyticsView } from '@/components/analytics/DashboardAnalyticsView';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Decision, DecisionAnalysis, DecisionCanvasData } from '@/types';
 import { saveDecision, saveAnalysis, saveJournalEntry } from '@/lib/firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { Sparkles, Brain, LayoutGrid, RotateCcw, ArrowRight, BarChart3 } from 'lucide-react';
+import { Brain, RotateCcw, BarChart3, Loader2 } from 'lucide-react';
+
+// Dynamic Code Splitting for Heavy Modules (Boosts Initial JS Load Efficiency)
+const AiCouncilView = dynamic(() => import('@/components/analysis/AiCouncilView').then(mod => mod.AiCouncilView), {
+  loading: () => <TabLoadingSkeleton text="Loading AI Council perspectives..." />
+});
+const BiasDetector = dynamic(() => import('@/components/analysis/BiasDetector').then(mod => mod.BiasDetector), {
+  loading: () => <TabLoadingSkeleton text="Loading Cognitive Bias Engine..." />
+});
+const MissingEvidenceEngine = dynamic(() => import('@/components/analysis/MissingEvidenceEngine').then(mod => mod.MissingEvidenceEngine), {
+  loading: () => <TabLoadingSkeleton text="Loading Missing Evidence Engine..." />
+});
+const StakeholderImpactMap = dynamic(() => import('@/components/stakeholder/StakeholderImpactMap').then(mod => mod.StakeholderImpactMap), {
+  loading: () => <TabLoadingSkeleton text="Loading Stakeholder Impact Matrix..." />
+});
+const DecisionCanvas = dynamic(() => import('@/components/canvas/DecisionCanvas').then(mod => mod.DecisionCanvas), {
+  loading: () => <TabLoadingSkeleton text="Loading Interactive Decision Canvas..." />
+});
+const ReflectionCoachChat = dynamic(() => import('@/components/coach/ReflectionCoachChat').then(mod => mod.ReflectionCoachChat), {
+  loading: () => <TabLoadingSkeleton text="Loading Socratic Coach Chat..." />
+});
+const DashboardAnalyticsView = dynamic(() => import('@/components/analytics/DashboardAnalyticsView').then(mod => mod.DashboardAnalyticsView), {
+  loading: () => <TabLoadingSkeleton text="Loading Analytics & Meta-Insights..." />
+});
+
+function TabLoadingSkeleton({ text }: { text: string }) {
+  return (
+    <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center space-x-3 text-slate-500 font-medium text-xs">
+      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { effectiveUserId } = useAuth();
@@ -72,7 +99,6 @@ export default function DashboardPage() {
         setAnalysis(data.analysis);
         await saveAnalysis(data.analysis);
 
-        // Auto-archive in Decision Journal
         await saveJournalEntry({
           id: `journal-${Date.now()}`,
           decisionId,
@@ -112,135 +138,139 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-3">
-            <Brain className="w-8 h-8 text-blue-500" />
-            <span>Decision Intelligence Workspace</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Structured analysis workspace to evaluate options, uncover blind spots, and coach reasoning.
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setShowGlobalAnalytics(!showGlobalAnalytics)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
-              showGlobalAnalytics
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>{showGlobalAnalytics ? 'Back to Workspace' : 'Analytics & Insights'}</span>
-          </button>
-
-          {currentDecision && (
-            <button
-              onClick={resetWorkspace}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Analyze New Decision</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {showGlobalAnalytics ? (
-        <DashboardAnalyticsView analysis={analysis} />
-      ) : !currentDecision || !analysis ? (
-        /* FEATURE 1: Decision Input Form */
-        <div className="space-y-4">
-          <DecisionForm onSubmit={handleCreateDecision} isLoading={loading} />
-        </div>
-      ) : (
-        /* ANALYSIS RESULTS WORKSPACE */
-        <div className="space-y-8">
-          
-          {/* Decision Summary Header Bar */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white shadow-xl space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[10px] uppercase font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                Active Decision Architecture
-              </span>
-              <span className="text-xs text-slate-400 font-mono">
-                ID: {currentDecision.id}
-              </span>
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-              {currentDecision.title}
-            </h2>
-
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-4xl">
-              {currentDecision.context}
+    <ErrorBoundary>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-3">
+              <Brain className="w-8 h-8 text-blue-500" />
+              <span>Decision Intelligence Workspace</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Structured analysis workspace to evaluate options, uncover blind spots, and coach reasoning.
             </p>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-800">
-              <div>Initial Confidence: <strong className="text-white">{currentDecision.confidenceLevel}/10</strong></div>
-              <div>Goals: <strong className="text-white">{currentDecision.goals.length} defined</strong></div>
-              <div>Constraints: <strong className="text-white">{currentDecision.constraints.length} non-negotiable</strong></div>
-            </div>
           </div>
 
-          {/* FEATURE 7: Decision Readiness Score Gauge */}
-          <ReadinessGauge score={analysis.readinessScore} breakdown={analysis.readinessBreakdown} />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowGlobalAnalytics(!showGlobalAnalytics)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                showGlobalAnalytics
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>{showGlobalAnalytics ? 'Back to Workspace' : 'Analytics & Insights'}</span>
+            </button>
 
-          {/* Tab Navigation */}
-          <div className="flex overflow-x-auto gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            {[
-              { id: 'analysis', label: 'Blind Spots', count: analysis.blindSpots.length },
-              { id: 'council', label: 'AI Council (4 Perspectives)', count: 4 },
-              { id: 'biases', label: 'Cognitive Biases', count: analysis.cognitiveBiases.filter(b => b.detected).length },
-              { id: 'evidence', label: 'Missing Evidence', count: analysis.missingEvidence.length },
-              { id: 'impact', label: 'Stakeholder Impact', count: analysis.stakeholderImpacts.length },
-              { id: 'canvas', label: 'Decision Canvas', count: 8 },
-              { id: 'coach', label: 'Socratic Coach Chat', count: 'Live' },
-              { id: 'analytics', label: 'Analytics & Insights', count: 'KPIs' },
-            ].map((tab) => (
+            {currentDecision && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center space-x-1.5 ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                onClick={resetWorkspace}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
               >
-                <span>{tab.label}</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
-                  {tab.count}
-                </span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Analyze New Decision</span>
               </button>
-            ))}
-          </div>
-
-          {/* Tab Content Display */}
-          <div className="space-y-6">
-            {activeTab === 'analysis' && <BlindSpotGrid blindSpots={analysis.blindSpots} />}
-            {activeTab === 'council' && <AiCouncilView perspectives={analysis.aiCouncil} />}
-            {activeTab === 'biases' && <BiasDetector biases={analysis.cognitiveBiases} />}
-            {activeTab === 'evidence' && <MissingEvidenceEngine items={analysis.missingEvidence} />}
-            {activeTab === 'impact' && <StakeholderImpactMap impacts={analysis.stakeholderImpacts} />}
-            {activeTab === 'canvas' && <DecisionCanvas initialData={analysis.canvasData} onSave={handleUpdateCanvas} />}
-            {activeTab === 'coach' && (
-              <ReflectionCoachChat
-                decisionId={currentDecision.id}
-                userId={effectiveUserId}
-                decisionTitle={currentDecision.title}
-                decisionContext={currentDecision.context}
-              />
             )}
-            {activeTab === 'analytics' && <DashboardAnalyticsView analysis={analysis} />}
           </div>
-
         </div>
-      )}
-    </div>
+
+        {showGlobalAnalytics ? (
+          <ErrorBoundary>
+            <DashboardAnalyticsView analysis={analysis} />
+          </ErrorBoundary>
+        ) : !currentDecision || !analysis ? (
+          <div className="space-y-4">
+            <DecisionForm onSubmit={handleCreateDecision} isLoading={loading} />
+          </div>
+        ) : (
+          <div className="space-y-8">
+            
+            {/* Decision Summary Header Bar */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white shadow-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                  Active Decision Architecture
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  ID: {currentDecision.id}
+                </span>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+                {currentDecision.title}
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-4xl">
+                {currentDecision.context}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                <div>Initial Confidence: <strong className="text-white">{currentDecision.confidenceLevel}/10</strong></div>
+                <div>Goals: <strong className="text-white">{currentDecision.goals.length} defined</strong></div>
+                <div>Constraints: <strong className="text-white">{currentDecision.constraints.length} non-negotiable</strong></div>
+              </div>
+            </div>
+
+            {/* Decision Readiness Gauge */}
+            <ReadinessGauge score={analysis.readinessScore} breakdown={analysis.readinessBreakdown} />
+
+            {/* Tab Navigation */}
+            <div className="flex overflow-x-auto gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              {[
+                { id: 'analysis', label: 'Blind Spots', count: analysis.blindSpots.length },
+                { id: 'council', label: 'AI Council (4 Perspectives)', count: 4 },
+                { id: 'biases', label: 'Cognitive Biases', count: analysis.cognitiveBiases.filter(b => b.detected).length },
+                { id: 'evidence', label: 'Missing Evidence', count: analysis.missingEvidence.length },
+                { id: 'impact', label: 'Stakeholder Impact', count: analysis.stakeholderImpacts.length },
+                { id: 'canvas', label: 'Decision Canvas', count: 8 },
+                { id: 'coach', label: 'Socratic Coach Chat', count: 'Live' },
+                { id: 'analytics', label: 'Analytics & Insights', count: 'KPIs' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-4 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center space-x-1.5 ${
+                    activeTab === tab.id
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content Display with Isolated Error Boundaries */}
+            <div className="space-y-6">
+              <ErrorBoundary>
+                {activeTab === 'analysis' && <BlindSpotGrid blindSpots={analysis.blindSpots} />}
+                {activeTab === 'council' && <AiCouncilView perspectives={analysis.aiCouncil} />}
+                {activeTab === 'biases' && <BiasDetector biases={analysis.cognitiveBiases} />}
+                {activeTab === 'evidence' && <MissingEvidenceEngine items={analysis.missingEvidence} />}
+                {activeTab === 'impact' && <StakeholderImpactMap impacts={analysis.stakeholderImpacts} />}
+                {activeTab === 'canvas' && <DecisionCanvas initialData={analysis.canvasData} onSave={handleUpdateCanvas} />}
+                {activeTab === 'coach' && (
+                  <ReflectionCoachChat
+                    decisionId={currentDecision.id}
+                    userId={effectiveUserId}
+                    decisionTitle={currentDecision.title}
+                    decisionContext={currentDecision.context}
+                  />
+                )}
+                {activeTab === 'analytics' && <DashboardAnalyticsView analysis={analysis} />}
+              </ErrorBoundary>
+            </div>
+
+          </div>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
