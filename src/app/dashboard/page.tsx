@@ -10,17 +10,19 @@ import { MissingEvidenceEngine } from '@/components/analysis/MissingEvidenceEngi
 import { ReflectionCoachChat } from '@/components/coach/ReflectionCoachChat';
 import { DecisionCanvas } from '@/components/canvas/DecisionCanvas';
 import { StakeholderImpactMap } from '@/components/stakeholder/StakeholderImpactMap';
+import { DashboardAnalyticsView } from '@/components/analytics/DashboardAnalyticsView';
 import { Decision, DecisionAnalysis, DecisionCanvasData } from '@/types';
 import { saveDecision, saveAnalysis, saveJournalEntry } from '@/lib/firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { Sparkles, Brain, LayoutGrid, RotateCcw, ArrowRight } from 'lucide-react';
+import { Sparkles, Brain, LayoutGrid, RotateCcw, ArrowRight, BarChart3 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { effectiveUserId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [currentDecision, setCurrentDecision] = useState<Decision | null>(null);
   const [analysis, setAnalysis] = useState<DecisionAnalysis | null>(null);
-  const [activeTab, setActiveTab] = useState<'analysis' | 'council' | 'biases' | 'evidence' | 'canvas' | 'coach' | 'impact'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'council' | 'biases' | 'evidence' | 'canvas' | 'coach' | 'impact' | 'analytics'>('analysis');
+  const [showGlobalAnalytics, setShowGlobalAnalytics] = useState(false);
 
   const handleCreateDecision = async (formData: {
     title: string;
@@ -106,6 +108,7 @@ export default function DashboardPage() {
     setCurrentDecision(null);
     setAnalysis(null);
     setActiveTab('analysis');
+    setShowGlobalAnalytics(false);
   };
 
   return (
@@ -123,18 +126,34 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {currentDecision && (
+        <div className="flex items-center space-x-3">
           <button
-            onClick={resetWorkspace}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
+            onClick={() => setShowGlobalAnalytics(!showGlobalAnalytics)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              showGlobalAnalytics
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Analyze New Decision</span>
+            <BarChart3 className="w-4 h-4" />
+            <span>{showGlobalAnalytics ? 'Back to Workspace' : 'Analytics & Insights'}</span>
           </button>
-        )}
+
+          {currentDecision && (
+            <button
+              onClick={resetWorkspace}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Analyze New Decision</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {!currentDecision || !analysis ? (
+      {showGlobalAnalytics ? (
+        <DashboardAnalyticsView analysis={analysis} />
+      ) : !currentDecision || !analysis ? (
         /* FEATURE 1: Decision Input Form */
         <div className="space-y-4">
           <DecisionForm onSubmit={handleCreateDecision} isLoading={loading} />
@@ -172,7 +191,7 @@ export default function DashboardPage() {
           {/* FEATURE 7: Decision Readiness Score Gauge */}
           <ReadinessGauge score={analysis.readinessScore} breakdown={analysis.readinessBreakdown} />
 
-          {/* Tab Navigation for Features 2, 3, 4, 5, 6, 8, 9 */}
+          {/* Tab Navigation */}
           <div className="flex overflow-x-auto gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             {[
               { id: 'analysis', label: 'Blind Spots', count: analysis.blindSpots.length },
@@ -182,6 +201,7 @@ export default function DashboardPage() {
               { id: 'impact', label: 'Stakeholder Impact', count: analysis.stakeholderImpacts.length },
               { id: 'canvas', label: 'Decision Canvas', count: 8 },
               { id: 'coach', label: 'Socratic Coach Chat', count: 'Live' },
+              { id: 'analytics', label: 'Analytics & Insights', count: 'KPIs' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -216,6 +236,7 @@ export default function DashboardPage() {
                 decisionContext={currentDecision.context}
               />
             )}
+            {activeTab === 'analytics' && <DashboardAnalyticsView analysis={analysis} />}
           </div>
 
         </div>
