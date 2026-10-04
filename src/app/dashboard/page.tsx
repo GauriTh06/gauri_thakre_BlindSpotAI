@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { DecisionForm } from '@/components/decision/DecisionForm';
 import { ReadinessGauge } from '@/components/analysis/ReadinessGauge';
 import { BlindSpotGrid } from '@/components/analysis/BlindSpotGrid';
@@ -9,9 +10,9 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Decision, DecisionAnalysis, DecisionCanvasData } from '@/types';
 import { saveDecision, saveAnalysis, saveJournalEntry } from '@/lib/firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { Brain, RotateCcw, BarChart3, Loader2 } from 'lucide-react';
+import { Brain, RotateCcw, BarChart3, Loader2, Sparkles } from 'lucide-react';
 
-// Dynamic Code Splitting for Heavy Modules (Boosts Initial JS Load Efficiency)
+// Dynamic Code Splitting for Heavy Modules
 const AiCouncilView = dynamic(() => import('@/components/analysis/AiCouncilView').then(mod => mod.AiCouncilView), {
   loading: () => <TabLoadingSkeleton text="Loading AI Council perspectives..." />
 });
@@ -45,11 +46,18 @@ function TabLoadingSkeleton({ text }: { text: string }) {
 
 export default function DashboardPage() {
   const { effectiveUserId } = useAuth();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [currentDecision, setCurrentDecision] = useState<Decision | null>(null);
   const [analysis, setAnalysis] = useState<DecisionAnalysis | null>(null);
   const [activeTab, setActiveTab] = useState<'analysis' | 'council' | 'biases' | 'evidence' | 'canvas' | 'coach' | 'impact' | 'analytics'>('analysis');
   const [showGlobalAnalytics, setShowGlobalAnalytics] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('view') === 'analytics') {
+      setShowGlobalAnalytics(true);
+    }
+  }, [searchParams]);
 
   const handleCreateDecision = async (formData: {
     title: string;
@@ -183,8 +191,22 @@ export default function DashboardPage() {
             <DashboardAnalyticsView analysis={analysis} />
           </ErrorBoundary>
         ) : !currentDecision || !analysis ? (
-          <div className="space-y-4">
+          <div className="space-y-12">
             <DecisionForm onSubmit={handleCreateDecision} isLoading={loading} />
+            
+            {/* Prominently Featured Analytics & Insights Dashboard */}
+            <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-slate-900 dark:text-white">
+                  <BarChart3 className="w-5 h-5 text-blue-500" />
+                  <h2 className="text-lg font-bold">Platform Intelligence & Decision Analytics</h2>
+                </div>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">Live Meta-Metrics</span>
+              </div>
+              <ErrorBoundary>
+                <DashboardAnalyticsView analysis={null} />
+              </ErrorBoundary>
+            </div>
           </div>
         ) : (
           <div className="space-y-8">

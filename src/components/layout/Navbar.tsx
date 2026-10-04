@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Brain, Sun, Moon, Sparkles, BookOpen, ShieldCheck, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Brain, Sun, Moon, Sparkles, BookOpen, ShieldCheck, LogIn, LogOut, User as UserIcon, BarChart3 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -45,11 +45,19 @@ export const Navbar = () => {
           </Link>
 
           <Link
+            href="/dashboard?view=analytics"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <BarChart3 className="w-4 h-4 text-purple-500" />
+            <span>Analytics</span>
+          </Link>
+
+          <Link
             href="/journal"
             className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <BookOpen className="w-4 h-4 text-emerald-500" />
-            <span>Decision Journal</span>
+            <span>Journal</span>
           </Link>
 
           {/* Theme Toggle Button */}
