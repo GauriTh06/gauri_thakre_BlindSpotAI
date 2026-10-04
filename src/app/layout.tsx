@@ -28,8 +28,14 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider>
             <div className="flex-1 flex flex-col">
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-blue-600 focus:text-white focus:font-bold focus:rounded-b-lg"
+              >
+                Skip to main content
+              </a>
               <Navbar />
-              <main id="main-content" className="flex-1">
+              <main id="main-content" className="flex-1" tabIndex={-1}>
                 {children}
               </main>
               <Footer />
